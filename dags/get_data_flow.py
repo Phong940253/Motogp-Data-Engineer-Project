@@ -8,7 +8,8 @@ import sys
 # add path to sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from pipelines.etl import async_process_season, async_process_event, async_process_category, async_process_session, async_process_classification
+from pipelines.etl import async_process_season, async_process_event, async_process_category,\
+    async_process_session, async_process_classification
 default_args = {
     "owner": "Adam Nguyen",
     "depends_on_past": False,

@@ -151,21 +151,17 @@ def transform_team(data):
         "legacy_id": data["legacy_id"],
     }
 
-
-producer = KafkaProducer(bootstrap_servers=["broker:29092"], max_block_ms=5000)
-
-async def send_to_kafka(data, topic):
-    producer.send(topic, json.dumps(data).encode("utf-8"), )
-
 async def process_season(**kwargs):
+    producer = KafkaProducer(bootstrap_servers=["broker:29092"], max_block_ms=5000)
     semaphone = asyncio.Semaphore(20)
     async with aiohttp.ClientSession() as session_http:
         list_season = await get_motogp_all_season_api(session_http, semaphone)
         for season in list_season:
-            await send_to_kafka(season, "season_topic")
+            producer.send("season_topic", json.dumps(season).encode("utf-8"))
         kwargs["ti"].xcom_push(key="list_season", value=list_season)
 
 async def process_event(**kwargs):
+    producer = KafkaProducer(bootstrap_servers=["broker:29092"], max_block_ms=5000)
     semaphone = asyncio.Semaphore(100)
     async with aiohttp.ClientSession() as session_http:
         list_season = kwargs["ti"].xcom_pull(key="list_season", task_ids="get_season_task")
@@ -177,10 +173,11 @@ async def process_event(**kwargs):
         print(type(list_event))
         for event in list_event:
             event = transform_event(event)
-            await send_to_kafka(event, "event_topic")
+            producer.send("event_topic", json.dumps(event).encode("utf-8"))
         kwargs["ti"].xcom_push(key="list_event", value=list_event)
 
 async def process_category(**kwargs):
+    producer = KafkaProducer(bootstrap_servers=["broker:29092"], max_block_ms=5000)
     semaphone = asyncio.Semaphore(100)
     async with aiohttp.ClientSession() as session_http:
         list_event = kwargs["ti"].xcom_pull(key="list_event", task_ids="get_event_task")
@@ -192,10 +189,11 @@ async def process_category(**kwargs):
         for event, categories in list_event_category:
             for category in categories:
                 category = transform_category(category)
-                await send_to_kafka({"id": category["id"], "event_id": event["id"], "name": category["name"], "legacy_id": category["legacy_id"]}, "category_topic")
+                producer.send("category_topic", json.dumps(category).encode("utf-8"))
         kwargs["ti"].xcom_push(key="list_event_category", value=list_event_category)
 
 async def process_session(**kwargs):
+    producer = KafkaProducer(bootstrap_servers=["broker:29092"], max_block_ms=5000)
     semaphone = asyncio.Semaphore(100)
     async with aiohttp.ClientSession() as session_http:
         list_event_category = kwargs["ti"].xcom_pull(key="list_event_category", task_ids="get_category_task")
@@ -211,10 +209,11 @@ async def process_session(**kwargs):
         print(type(list_session))
         for session in list_session:
             session = transform_session(session)
-            await send_to_kafka(session, "session_topic")
+            producer.send("session_topic", json.dumps(session).encode("utf-8"))
         kwargs["ti"].xcom_push(key="list_session", value=list_session)
 
 async def process_classification(**kwargs):
+    producer = KafkaProducer(bootstrap_servers=["broker:29092"], max_block_ms=5000)
     semaphone = asyncio.Semaphore(100)
     async with aiohttp.ClientSession() as session_http:
         list_session = kwargs["ti"].xcom_pull(key="list_session", task_ids="get_session_task")
@@ -224,12 +223,8 @@ async def process_classification(**kwargs):
         print(len(list_classification))
         print(type(list_classification))
         for classification in list_classification:
-            await send_to_kafka(classification, "classification_topic")
+            producer.send("classification_topic", json.dumps(classification).encode("utf-8"))
         kwargs['ti'].xcom_push(key='list_classification', value=list_classification)
-    
-# async def aprint(**kwargs):
-#     await kwargs['ti'].xcom_push(key='test', value=[1,2,3,4])
-#     print("123456789")
     
 def async_process_season(**kwargs):
     asyncio.run(process_season(**kwargs))
