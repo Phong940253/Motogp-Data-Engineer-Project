@@ -103,72 +103,73 @@ services:
       timeout: 10s
       retries: 5
   
-  # webserver:
-  #   image: apache/airflow:2.7.2
-  #   command: webserver
-  #   entrypoint: [ "/opt/airflow/scripts/entrypoint.sh" ]
-  #   # restart: always
-  #   depends_on:
-  #     - postgres
-  #   environment:
-  #     - AIRFLOW__CORE__EXECUTOR=SequentialExecutor
-  #     - AIRFLOW__CORE__LOAD_EXAMPLES=False
-  #     - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
-  #     - AIRFLOW_WEBSERVER_BASE_URL=http://localhost:8080
-  #     - AIRFLOW__WEBSERVER__SECRET_KEY=lLQxT2WSw9Ij/6ffpqZEwZmWnI5jw5Jf76iMGeeet5g=
+  webserver:
+    image: apache/airflow:2.7.2
+    command: webserver
+    entrypoint: [ "/opt/airflow/scripts/entrypoint.sh" ]
+    # restart: always
+    depends_on:
+      - postgres
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=SequentialExecutor
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
+      - AIRFLOW_WEBSERVER_BASE_URL=http://localhost:8080
+      - AIRFLOW__WEBSERVER__SECRET_KEY=lLQxT2WSw9Ij/6ffpqZEwZmWnI5jw5Jf76iMGeeet5g=
 
-  #   logging:
-  #     options:
-  #       max-size: "200k"
-  #       max-file: "10"
-  #   volumes:
-  #     - ./dags:/opt/airflow/dags
-  #     - ./scripts/entrypoint.sh:/opt/airflow/scripts/entrypoint.sh
-  #     - ./requirements.txt:/opt/airflow/requirements.txt
-  #     - ./data:/opt/airflow/data
-  #     - ./pipelines:/opt/airflow/pipelines
-  #   ports:
-  #     - 8181:8080
-  #   healthcheck:
-  #     test: [ "CMD", "curl", "--fail", "http://localhost:8080/health" ]
-  #     interval: 30s
-  #     timeout: 10s
-  #     retries: 3
-  #   networks:
-  #     - confluent
+    logging:
+      options:
+        max-size: "200k"
+        max-file: "10"
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./scripts/entrypoint.sh:/opt/airflow/scripts/entrypoint.sh
+      - ./requirements.txt:/opt/airflow/requirements.txt
+      - ./data:/opt/airflow/data
+      - ./airflow/logs:/opt/airflow/logs
+      - ./pipelines:/opt/airflow/pipelines
+    ports:
+      - 8181:8080
+    healthcheck:
+      test: [ "CMD", "curl", "--fail", "http://localhost:8080/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - confluent
 
-  # postgres:
-  #   image: postgres:14.0
-  #   environment:
-  #     - POSTGRES_USER=airflow
-  #     - POSTGRES_PASSWORD=airflow
-  #     - POSTGRES_DB=airflow
-  #   logging:
-  #     options:
-  #       max-size: "200k"
-  #       max-file: "10"
-  #   networks:
-  #     - confluent
+  postgres:
+    image: postgres:14.0
+    environment:
+      - POSTGRES_USER=airflow
+      - POSTGRES_PASSWORD=airflow
+      - POSTGRES_DB=airflow
+    logging:
+      options:
+        max-size: "200k"
+        max-file: "10"
+    networks:
+      - confluent
   
-  # scheduler:
-  #   image: apache/airflow:2.7.2
-  #   depends_on:
-  #     webserver:
-  #       condition: service_healthy
-  #   volumes:
-  #     - ./dags:/opt/airflow/dags
-  #     - ./requirements.txt:/opt/airflow/requirements.txt
-  #     - ./data:/opt/airflow/data
-  #     - ./pipelines:/opt/airflow/pipelines
-  #   environment:
-  #     - LOAD_EX=n
-  #     - EXECUTOR=Sequential
-  #     - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
-  #     - AIRFLOW_WEBSERVER_BASE_URL=http://localhost:8080
-  #     - AIRFLOW__WEBSERVER__SECRET_KEY=lLQxT2WSw9Ij/6ffpqZEwZmWnI5jw5Jf76iMGeeet5g=
-  #   command: bash -c "pip install --no-cache-dir -r ./requirements.txt && airflow db upgrade && airflow scheduler"
-  #   networks:
-  #     - confluent
+  scheduler:
+    image: apache/airflow:2.7.2
+    depends_on:
+      webserver:
+        condition: service_healthy
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./requirements.txt:/opt/airflow/requirements.txt
+      - ./data:/opt/airflow/data
+      - ./pipelines:/opt/airflow/pipelines
+    environment:
+      - LOAD_EX=n
+      - EXECUTOR=Sequential
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
+      - AIRFLOW_WEBSERVER_BASE_URL=http://localhost:8080
+      - AIRFLOW__WEBSERVER__SECRET_KEY=lLQxT2WSw9Ij/6ffpqZEwZmWnI5jw5Jf76iMGeeet5g=
+    command: bash -c "pip install --no-cache-dir -r ./requirements.txt && airflow db upgrade && airflow scheduler"
+    networks:
+      - confluent
 
   # spark-master:
   #   image: bitnami/spark:3.5.0
