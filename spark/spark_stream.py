@@ -1,6 +1,6 @@
 import logging
 
-# from cassandra.cluster import Cluster
+from cassandra.cluster import Cluster
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import from_json, col
 from pyspark.sql.types import StructType, StructField, StringType, MapType, DecimalType
@@ -21,16 +21,17 @@ def create_keyspace(session):
     )
 
 def create_table(session):
-    # create table
+    # create tables
     
+    # Table: motogp.seasons
     session.execute("""
-
         CREATE TABLE IF NOT EXISTS motogp.seasons (
             season_id UUID PRIMARY KEY,
-            year int,
-            current boolean
-        );
-
+            year int        );
+    """)
+    
+    # Table: motogp.circuits
+    session.execute("""
         CREATE TABLE IF NOT EXISTS motogp.circuits (
             circuit_id UUID PRIMARY KEY,
             name text,
@@ -39,7 +40,10 @@ def create_table(session):
             nation text,
             country_iso text
         );
-
+    """)
+    
+    # Table: motogp.events
+    session.execute("""
         CREATE TABLE IF NOT EXISTS motogp.events (
             event_id UUID PRIMARY KEY,
             season_id UUID,
@@ -54,13 +58,19 @@ def create_table(session):
             circuit_id UUID,
             country_iso text
         );
-
+    """)
+    
+    # Table: motogp.categories
+    session.execute("""
         CREATE TABLE IF NOT EXISTS motogp.categories (
             category_id UUID PRIMARY KEY,
             name text,
             legacy_id int
         );
-
+    """)
+    
+    # Table: motogp.sessions
+    session.execute("""
         CREATE TABLE IF NOT EXISTS motogp.sessions (
             session_id UUID PRIMARY KEY,
             event_id UUID,
@@ -68,9 +78,12 @@ def create_table(session):
             type text,
             category_id UUID,
             circuit_id UUID,
-            conditions map<text, text>,
+            conditions map<text, text>
         );
-
+    """)
+    
+    # Table: motogp.classifications
+    session.execute("""
         CREATE TABLE IF NOT EXISTS motogp.classifications (
             classification_id UUID PRIMARY KEY,
             session_id UUID,
@@ -85,7 +98,10 @@ def create_table(session):
             points int,
             status text
         );
-
+    """)
+    
+    # Table: motogp.riders
+    session.execute("""
         CREATE TABLE IF NOT EXISTS motogp.riders (
             rider_id UUID PRIMARY KEY,
             full_name text,
@@ -94,27 +110,36 @@ def create_table(session):
             number int,
             riders_api_uuid UUID
         );
-
+    """)
+    
+    # Table: motogp.teams
+    session.execute("""
         CREATE TABLE IF NOT EXISTS motogp.teams (
             team_id UUID PRIMARY KEY,
             name text,
             legacy_id int,
             season_id UUID
         );
-
+    """)
+    
+    # Table: motogp.constructors
+    session.execute("""
         CREATE TABLE IF NOT EXISTS motogp.constructors (
             constructor_id UUID PRIMARY KEY,
             name text,
             legacy_id int
         );
-
+    """)
+    
+    # Table: motogp.countries
+    session.execute("""
         CREATE TABLE IF NOT EXISTS motogp.countries (
             country_iso text PRIMARY KEY,
             country_name text,
             region_iso text
         );
-            
-        """)
+    """)
+
     # (['country', 'event_files', 'circuit', 'test', 'sponsored_name', 
     # 'date_end', 'toad_api_uuid', 'date_start', 'name', 'legacy_id', 'season', 'short_name', 'id'])
 
@@ -333,15 +358,14 @@ def create_spark_connection():
     # create spark connection
     spark_conn = None
     try:
-        s_conn = SparkSession.builder \
-            .appName("motogp") \
-            .config('spark.jars.packages', 'com.datastax.spark:spark-cassandra-connector_2.13:3.4.1',
-                    "org.apache.spark:spark-sql-kafka-0-10_2.13:3.5.0") \
+        spark_conn = SparkSession.builder \
+            .appName('SparkDataStreaming') \
+            .config('spark.jars.packages', "com.datastax.spark:spark-cassandra-connector_2.12:3.3.0,"
+                                           "org.apache.spark:spark-sql-kafka-0-10_2.12:3.3.3") \
             .config('spark.cassandra.connection.host', 'localhost') \
-            .master("local[*]") \
             .getOrCreate()
         
-        s_conn.sparkContext.setLogLevel("ERROR")
+        spark_conn.sparkContext.setLogLevel("ERROR")
         logging.info("Spark connection created successfully")
     except Exception as e:
         logging.error("Could not create the spark session due to exception: {}".format(e))
@@ -349,17 +373,18 @@ def create_spark_connection():
     return spark_conn
 
 def connect_to_kafka(spark_conn, topic):
+    # connect to kafka with spark connection
     spark_df = None
     try:
-        spark_df = spark_conn.readStream \
-            .format("kafka") \
+        spark_df = spark_conn.readStream.format("kafka") \
             .option("kafka.bootstrap.servers", "localhost:9092") \
             .option("subscribe", topic) \
+            .option("startingOffsets", "earliest") \
+            .option("failOnDataLoss", "false") \
             .load()
-        logging.info("Connected to kafka datastream successfully")
-        
+        logging.info("Connected to kafka successfully")
     except Exception as e:
-        logging.error("Could not connect to kafka datastream due to exception: {}".format(e))
+        logging.error("Could not connect to kafka due to exception: {}".format(e))
         
     return spark_df
     
@@ -376,7 +401,7 @@ def create_cassandra_connection():
         logging.error("Could not create the cassandra connection due to exception: {}".format(e))
         return None
 
-def create_selec_df_from_kafka_classification(spark_df):
+def cs_dff_classification(spark_df):
     schema = StructType([
         StructField("id", StringType()),
         StructField("session_id", StringType()),
@@ -392,9 +417,16 @@ def create_selec_df_from_kafka_classification(spark_df):
     
     sel = spark_df.selectExpr("CAST(value AS STRING)") \
         .select(from_json(col("value"), schema).alias("data")).select("data.*")
-    print(sel)
     return sel
     
+def cs_dff_seasons(spark_df):
+    schema = StructType([
+        StructField("season_id", StringType()),
+        StructField("year", StringType())    ])
+    
+    sel = spark_df.selectExpr("CAST(value AS STRING)") \
+        .select(from_json(col("value"), schema).alias("data")).select("data.*")
+    return sel
     
 if __name__ == "__main__":
     #create spark connection
@@ -402,21 +434,18 @@ if __name__ == "__main__":
     
     if spark_conn is not None:
         #connect to kafka with spark connection
-        spark_df_classification = connect_to_kafka(spark_conn, "classification_topic")
-        selection_df = create_selec_df_from_kafka_classification(spark_df_classification)
-        print(selection_df)
+        spark_df_seasons = connect_to_kafka(spark_conn, "season_topic")
+        selection_df = cs_dff_seasons(spark_df_seasons)  
         
+        session = create_cassandra_connection()
         
-        # session = create_cassandra_connection()
+        if session is not None:
+            create_keyspace(session)
+            create_table(session)
+        streaming_query = (selection_df.writeStream.format("org.apache.spark.sql.cassandra")
+                                .option('checkpointLocation', '/tmp/checkpoint')
+                                .option("keyspace", "motogp") \
+                                .option("table", "seasons") \
+                                .start())
         
-        # if session is not None:
-        #     create_keyspace(session)
-        #     create_table(session)
-            
-        #     streaming_query = (selection_df.writeStream.format("org.apache.spark.sql.cassandra") \
-        #                     .option("checkpointLocation", "/tmp/checkpoint") \
-        #                     .option("keyspace", "motogp") \
-        #                     .option("table", "results") \
-        #                     .start())
-            
-        #     streaming_query.awaitTermination()
+        streaming_query.awaitTermination()

@@ -95,6 +95,12 @@ async def get_motogp_result_session_api(session_http, semaphore, session):
 # print(get_motogp_all_season_api())
 
 # Transform
+def transform_season(data):
+    return {
+        "season_id": data["id"],
+        "year": data["year"],
+    }
+
 def transform_event(data):
     return {
         "id": data["id"],
@@ -157,6 +163,7 @@ async def process_season(**kwargs):
     async with aiohttp.ClientSession() as session_http:
         list_season = await get_motogp_all_season_api(session_http, semaphone)
         for season in list_season:
+            season = transform_season(season)
             producer.send("season_topic", json.dumps(season).encode("utf-8"))
         kwargs["ti"].xcom_push(key="list_season", value=list_season)
 
