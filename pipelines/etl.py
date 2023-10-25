@@ -103,7 +103,7 @@ def transform_season(data):
 
 def transform_event(data):
     return {
-        "id": data["id"],
+        "event_id": data["id"],
         "name": data["name"],
         "country": data["country"]["iso"],
         "circuit": data["circuit"]["id"],
@@ -120,7 +120,7 @@ def transform_event(data):
 
 def transform_category(data):
     return {
-        "id": data["id"],
+        "category_id": data["id"],
         "name": re.sub(r"[^a-zA-Z0-9\s]", "", data["name"]),
         "legacy_id": data["legacy_id"],
     }
@@ -128,7 +128,7 @@ def transform_category(data):
 
 def transform_session(data):
     return {
-        "id": data["id"],
+        "session_id": data["id"],
         "date": data["date"],
         "number": data["number"],
         "event_id": data["event"]["id"],
@@ -153,6 +153,13 @@ def transform_rider(data):
 def transform_team(data):
     return {
         "team_id": data["id"],
+        "name": data["name"],
+        "legacy_id": data["legacy_id"],
+    }
+
+def transform_constructor(data):
+    return {
+        "constructor_id": data["id"],
         "name": data["name"],
         "legacy_id": data["legacy_id"],
     }
@@ -233,6 +240,31 @@ async def process_classification(**kwargs):
             producer.send("classification_topic", json.dumps(classification).encode("utf-8"))
         kwargs['ti'].xcom_push(key='list_classification', value=list_classification)
     
+def process_rider(**kwargs):
+    producer = KafkaProducer(bootstrap_servers=["broker:29092"], max_block_ms=5000)
+    list_classification = kwargs["ti"].xcom_pull(key="list_classification", task_ids="get_classification_task")
+    for classification in list_classification:
+        rider = transform_rider(classification["rider"])
+        producer.send("rider_topic", json.dumps(rider).encode("utf-8"))
+    
+
+def process_team(**kwargs):
+    producer = KafkaProducer(bootstrap_servers=["broker:29092"], max_block_ms=5000)
+    list_classification = kwargs["ti"].xcom_pull(key="list_classification", task_ids="get_classification_task")
+    for classification in list_classification:
+        team = transform_team(classification["team"])
+        producer.send("team_topic", json.dumps(team).encode("utf-8"))
+        
+def process_constructor(**kwargs):
+    producer = KafkaProducer(bootstrap_servers=["broker:29092"], max_block_ms=5000)
+    list_classification = kwargs["ti"].xcom_pull(key="list_classification", task_ids="get_classification_task")
+    for classification in list_classification:
+        constructor = transform_constructor(classification["constructor"])
+        producer.send("constructor_topic", json.dumps(constructor).encode("utf-8"))
+        
+def
+
+
 def async_process_season(**kwargs):
     asyncio.run(process_season(**kwargs))
     
@@ -248,7 +280,6 @@ def async_process_session(**kwargs):
 def async_process_classification(**kwargs):
     asyncio.run(process_classification(**kwargs))
     
-
 # start_time = time.time()
 # # asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 # asyncio.run(main())

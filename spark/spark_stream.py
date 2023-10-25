@@ -401,7 +401,7 @@ def create_cassandra_connection():
         logging.error("Could not create the cassandra connection due to exception: {}".format(e))
         return None
 
-def cs_dff_classification(spark_df):
+def cs_dfk_classification(spark_df):
     schema = StructType([
         StructField("id", StringType()),
         StructField("session_id", StringType()),
@@ -419,10 +419,27 @@ def cs_dff_classification(spark_df):
         .select(from_json(col("value"), schema).alias("data")).select("data.*")
     return sel
     
-def cs_dff_seasons(spark_df):
+def cs_dfk_seasons(spark_df):
     schema = StructType([
         StructField("season_id", StringType()),
         StructField("year", StringType())    ])
+    
+    sel = spark_df.selectExpr("CAST(value AS STRING)") \
+        .select(from_json(col("value"), schema).alias("data")).select("data.*")
+    return sel
+    
+def cs_dfk_events(spark_df):
+    schema = StructType([
+        StructField("season_id", StringType()),
+        StructField("name", StringType()),
+        StructField("sponsored_name", StringType()),
+        StructField("date_start", StringType()),
+        StructField("date_end", StringType()),
+        StructField("test", StringType()),
+        StructField("toad_api_uuid", StringType()),
+        StructField("short_name", StringType()),
+        StructField("circuit_id", StringType()),
+        StructField("country_iso", StringType())    ])
     
     sel = spark_df.selectExpr("CAST(value AS STRING)") \
         .select(from_json(col("value"), schema).alias("data")).select("data.*")
@@ -435,7 +452,7 @@ if __name__ == "__main__":
     if spark_conn is not None:
         #connect to kafka with spark connection
         spark_df_seasons = connect_to_kafka(spark_conn, "season_topic")
-        selection_df = cs_dff_seasons(spark_df_seasons)  
+        selection_df = cs_dfk_seasons(spark_df_seasons)  
         
         session = create_cassandra_connection()
         
