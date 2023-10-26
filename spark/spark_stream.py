@@ -3,7 +3,7 @@ import logging
 from cassandra.cluster import Cluster
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import from_json, col
-from pyspark.sql.types import StructType, StructField, StringType, MapType, DecimalType
+from pyspark.sql.types import StructType, StructField, StringType, MapType, DecimalType, IntegerType
 
 import os
 import sys
@@ -37,7 +37,6 @@ def create_table(session):
             name text,
             legacy_id int,
             place text,
-            nation text,
             country_iso text
         );
     """)
@@ -96,7 +95,6 @@ def create_table(session):
             total_laps int,
             time text,
             points int,
-            status text
         );
     """)
     
@@ -118,7 +116,6 @@ def create_table(session):
             team_id UUID PRIMARY KEY,
             name text,
             legacy_id int,
-            season_id UUID
         );
     """)
     
@@ -135,7 +132,7 @@ def create_table(session):
     session.execute("""
         CREATE TABLE IF NOT EXISTS motogp.countries (
             country_iso text PRIMARY KEY,
-            country_name text,
+            name text,
             region_iso text
         );
     """)
@@ -353,15 +350,155 @@ def insert_data_to_countries(session, **kwargs):
         logging.error(f"Could not insert data due to exception: {e}")
     
     
+
+def cs_dfk_classification(spark_df):
+    schema = StructType([
+        StructField("classification_id", StringType()),
+        StructField("session_id", StringType()),
+        StructField("position", StringType()),
+        StructField("rider_id", StringType()),
+        StructField("team_id", StringType()),
+        StructField("constructor_id", StringType()),
+        StructField("average_speed", DecimalType()),
+        StructField("gap", MapType(StringType(), StringType())),
+        StructField("total_laps", StringType()),
+        StructField("time", StringType()),
+        StructField("points", IntegerType()),
+        
+    ])
+    
+    sel = spark_df.selectExpr("CAST(value AS STRING)") \
+        .select(from_json(col("value"), schema).alias("data")).select("data.*")
+    return sel
+    
+def cs_dfk_seasons(spark_df):
+    schema = StructType([
+        StructField("season_id", StringType()),
+        StructField("year", StringType())    
+    ])
+    
+    sel = spark_df.selectExpr("CAST(value AS STRING)") \
+        .select(from_json(col("value"), schema).alias("data")).select("data.*")
+    return sel
+    
+# Define a function to transform data into a specific schema
+def cs_dfk_events(spark_df):
+    schema = StructType([
+        StructField("event_id", StringType()),
+        StructField("name", StringType()),
+        StructField("country_iso", StringType()),
+        StructField("circuit_id", StringType()),
+        StructField("date_start", StringType()),
+        StructField("date_end", StringType()),
+        StructField("season_id", StringType()),
+        StructField("sponsored_name", StringType()),
+        StructField("test", StringType()),
+        StructField("toad_api_uuid", StringType()),
+        StructField("short_name", StringType()),
+        StructField("legacy_id", StringType())
+    ])
+
+    sel = spark_df.selectExpr("CAST(value AS STRING") \
+                 .select(from_json(col("value"), schema).alias("data")).select("data.*")
+    return sel
+
+# Define a function to transform data into a specific schema
+def cs_dfk_categories(spark_df):
+    schema = StructType([
+        StructField("category_id", StringType()),
+        StructField("name", StringType()),
+        StructField("legacy_id", StringType())
+    ])
+
+    sel = spark_df.selectExpr("CAST(value AS STRING") \
+                 .select(from_json(col("value"), schema).alias("data")).select("data.*")
+    return sel
+
+# Define a function to transform data into a specific schema
+def cs_dfk_riders(spark_df):
+    schema = StructType([
+        StructField("rider_id", StringType()),
+        StructField("full_name", StringType()),
+        StructField("country_iso", StringType()),
+        StructField("legacy_id", StringType()),
+        StructField("number", StringType()),
+        StructField("riders_api_uuid", StringType())
+    ])
+
+    sel = spark_df.selectExpr("CAST(value AS STRING") \
+                 .select(from_json(col("value"), schema).alias("data")).select("data.*")
+    return sel
+
+# Define a function to transform data into a specific schema
+def cs_dfk_teams(spark_df):
+    schema = StructType([
+        StructField("team_id", StringType()),
+        StructField("name", StringType()),
+        StructField("legacy_id", StringType())
+    ])
+
+    sel = spark_df.selectExpr("CAST(value AS STRING") \
+                 .select(from_json(col("value"), schema).alias("data")).select("data.*")
+    return sel
+
+# Define a function to transform data into a specific schema
+def cs_dfk_constructors(spark_df):
+    schema = StructType([
+        StructField("constructor_id", StringType()),
+        StructField("name", StringType()),
+        StructField("legacy_id", StringType())
+    ])
+
+    sel = spark_df.selectExpr("CAST(value AS STRING") \
+                 .select(from_json(col("value"), schema).alias("data")).select("data.*")
+    return sel
+
+# Define a function to transform data into a specific schema
+def cs_dfk_circuits(spark_df):
+    schema = StructType([
+        StructField("circuit_id", StringType()),
+        StructField("name", StringType()),
+        StructField("legacy_id", StringType()),
+        StructField("place", StringType()),
+        StructField("country_iso", StringType())
+    ])
+
+    sel = spark_df.selectExpr("CAST(value AS STRING") \
+                 .select(from_json(col("value"), schema).alias("data")).select("data.*")
+    return sel
+
+# Define a function to transform data into a specific schema
+def cs_dfk_countries(spark_df):
+    schema = StructType([
+        StructField("country_iso", StringType()),
+        StructField("name", StringType()),
+        StructField("region_iso", StringType())
+    ])
+
+    sel = spark_df.selectExpr("CAST(value AS STRING") \
+                 .select(from_json(col("value"), schema).alias("data")).select("data.*")
+    return sel
+
+def cs_dfk_sessions(spark_df):
+    schema = StructType([
+        StructField("session_id", StringType()),
+        StructField("event_id", StringType()),
+        StructField("date", StringType()),
+        StructField("type", StringType()),
+        StructField("category_id", StringType()),
+        StructField("circuit_id", StringType()),
+        StructField("conditions", MapType(StringType(), StringType()))
+    ])
+
     
 def create_spark_connection():
     # create spark connection
     spark_conn = None
     try:
         spark_conn = SparkSession.builder \
-            .appName('SparkDataStreaming') \
-            .config('spark.jars.packages', "com.datastax.spark:spark-cassandra-connector_2.12:3.3.0,"
-                                           "org.apache.spark:spark-sql-kafka-0-10_2.12:3.3.3") \
+            .appName("motogp") \
+            .config('spark.jars.packages', "com.datastax.spark:spark-cassandra-connector_2.12:3.4.1,"
+                                           "org.apache.spark:spark-sql-kafka-0-10_2.12:3.4.1") \
             .config('spark.cassandra.connection.host', 'localhost') \
             .getOrCreate()
         
@@ -372,13 +509,13 @@ def create_spark_connection():
         
     return spark_conn
 
-def connect_to_kafka(spark_conn, topic):
+def connect_to_kafka(spark_conn, topics):
     # connect to kafka with spark connection
     spark_df = None
     try:
         spark_df = spark_conn.readStream.format("kafka") \
-            .option("kafka.bootstrap.servers", "localhost:9092") \
-            .option("subscribe", topic) \
+            .option("kafka.bootstrap.servers", "broker:9092") \
+            .option("subscribe", topics) \
             .option("startingOffsets", "earliest") \
             .option("failOnDataLoss", "false") \
             .load()
@@ -401,68 +538,39 @@ def create_cassandra_connection():
         logging.error("Could not create the cassandra connection due to exception: {}".format(e))
         return None
 
-def cs_dfk_classification(spark_df):
-    schema = StructType([
-        StructField("id", StringType()),
-        StructField("session_id", StringType()),
-        StructField("position", StringType()),
-        StructField("rider_id", StringType()),
-        StructField("team_id", StringType()),
-        StructField("constructor_id", StringType()),
-        StructField("average_speed", DecimalType()),
-        StructField("gap", MapType(StringType(), StringType())),
+# Define a function to connect to a Kafka topic and process data
+def process_kafka_topic(spark, kafka_topic, cs_dfk, table):
+    # Connect to Kafka
+    spark_df = connect_to_kafka(spark, kafka_topic)
+    selection_df = cs_dfk(spark_df)  
+
+    streaming_query = (selection_df.writeStream.format("org.apache.spark.sql.cassandra")
+                               .option('checkpointLocation', '/tmp/checkpoint')
+                               .option('keyspace', 'motogp')
+                               .option('table', table)
+                               .start())
         
-        
-    ])
-    
-    sel = spark_df.selectExpr("CAST(value AS STRING)") \
-        .select(from_json(col("value"), schema).alias("data")).select("data.*")
-    return sel
-    
-def cs_dfk_seasons(spark_df):
-    schema = StructType([
-        StructField("season_id", StringType()),
-        StructField("year", StringType())    ])
-    
-    sel = spark_df.selectExpr("CAST(value AS STRING)") \
-        .select(from_json(col("value"), schema).alias("data")).select("data.*")
-    return sel
-    
-def cs_dfk_events(spark_df):
-    schema = StructType([
-        StructField("season_id", StringType()),
-        StructField("name", StringType()),
-        StructField("sponsored_name", StringType()),
-        StructField("date_start", StringType()),
-        StructField("date_end", StringType()),
-        StructField("test", StringType()),
-        StructField("toad_api_uuid", StringType()),
-        StructField("short_name", StringType()),
-        StructField("circuit_id", StringType()),
-        StructField("country_iso", StringType())    ])
-    
-    sel = spark_df.selectExpr("CAST(value AS STRING)") \
-        .select(from_json(col("value"), schema).alias("data")).select("data.*")
-    return sel
-    
+    streaming_query.awaitTermination()
+
 if __name__ == "__main__":
     #create spark connection
     spark_conn = create_spark_connection()
     
     if spark_conn is not None:
-        #connect to kafka with spark connection
-        spark_df_seasons = connect_to_kafka(spark_conn, "season_topic")
-        selection_df = cs_dfk_seasons(spark_df_seasons)  
         
         session = create_cassandra_connection()
         
         if session is not None:
             create_keyspace(session)
             create_table(session)
-        streaming_query = (selection_df.writeStream.format("org.apache.spark.sql.cassandra")
-                                .option('checkpointLocation', '/tmp/checkpoint')
-                                .option("keyspace", "motogp") \
-                                .option("table", "seasons") \
-                                .start())
         
-        streaming_query.awaitTermination()
+        process_kafka_topic(spark_conn, "season_topic", cs_dfk_seasons, "seasons")
+        process_kafka_topic(spark_conn, "event_topic", cs_dfk_events, "events")
+        process_kafka_topic(spark_conn, "category_topic", cs_dfk_categories, "categories")
+        process_kafka_topic(spark_conn, "session_topic", cs_dfk_sessions, "sessions")
+        process_kafka_topic(spark_conn, "classification_topic", cs_dfk_classification, "classifications")
+        process_kafka_topic(spark_conn, "rider_topic", cs_dfk_riders, "riders")
+        process_kafka_topic(spark_conn, "team_topic", cs_dfk_teams, "teams")
+        process_kafka_topic(spark_conn, "constructor_topic", cs_dfk_constructors, "constructors")
+        process_kafka_topic(spark_conn, "circuit_topic", cs_dfk_circuits, "circuits")
+        process_kafka_topic(spark_conn, "country_topic", cs_dfk_countries, "countries")
