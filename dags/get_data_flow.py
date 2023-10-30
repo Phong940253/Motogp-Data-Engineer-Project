@@ -95,6 +95,4 @@ get_constructor_task = PythonOperator(
     dag=dag
 )
 
-get_season_task >> get_event_task >> get_category_task \
->> get_session_task >> get_classification_task >> get_rider_task \
->> get_team_task >> get_circuit_task >> get_country_task >> get_constructor_task
+get_season_task >> get_event_task >> get_category_task >> get_session_task >> get_classification_task >> get_rider_task >> get_team_task >> get_circuit_task >> get_country_task >> get_constructor_task
