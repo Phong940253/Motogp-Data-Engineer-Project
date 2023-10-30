@@ -76,7 +76,7 @@ def create_table(session):
             event_id UUID,
             date date,
             type text,
-            category text,
+            category_id text,
             circuit_id UUID,
             condition map<text, text>
         );
