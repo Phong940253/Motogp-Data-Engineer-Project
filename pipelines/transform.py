@@ -53,11 +53,11 @@ def transform_sessions(df):
     df['circuit_id'] = df['event'].fillna('N/A')
 
     # Get category_id from category column
-    df['category'] = df['category'].apply(lambda x: x['id'] if pd.notna(x) else x)
+    df['category_id'] = df['category_id'].apply(lambda x: x['id'] if pd.notna(x) else x)
     # get event_id from event column
     df['event_id'] = df['event'].apply(lambda x: x['id'] if pd.notna(x) else x)
     # get circuit_id from event column
-    df['circuit_id'] = df['event'].apply(lambda x: x['circuit']['name'] if pd.notna(x) else x)
+    df['circuit_id'] = df['event'].apply(lambda x: x['circuit']['id'] if pd.notna(x) else x)
 
     # Convert the 'date' column to a datetime data type can convert to json for send kafka and fill na
     df['date'] = pd.to_datetime(df['date'], errors='coerce')
@@ -359,9 +359,9 @@ def transform_seasons(df):
     # Handle missing values (none to handle in this example)
         
     # Select and reorder columns
-    df = df[['id', 'name', 'year']]
+    df = df[['id', 'year']]
     # Rename columns
-    df = df.rename(columns={"id": "season_id", "name": "name", "year": "year"})
+    df = df.rename(columns={"id": "season_id", "year": "year"})
     
     return df
 

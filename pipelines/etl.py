@@ -108,7 +108,7 @@ async def get_motogp_result_session_api(session_http, semaphore, session, more_d
 def save_csv(data, file_name):
     df = pd.DataFrame(data)
     print(df.head(20))
-    df.to_csv('/opt/airflow/dags/'+file_name, index=False)
+    df.to_csv('/opt/airflow/data/'+file_name, index=False)
 
 def convert_df_to_list(df):
     return df.to_dict('records')
@@ -125,6 +125,7 @@ async def process_season(**kwargs):
     async with aiohttp.ClientSession() as session_http:
         list_season = await get_motogp_all_season_api(session_http, semaphone)
         list_season = transform(list_season, transform_seasons)
+        save_csv(list_season, "season.csv")
         for season in list_season:
             producer.send("season_topic", json.dumps(season).encode("utf-8"))
             
@@ -144,6 +145,7 @@ async def process_event(**kwargs):
         list_circuit = []
 
         list_event = transform(list_event, transform_event)
+        save_csv(list_event, "event.csv")
         for event in list_event:
             if event.get("country") is not None:
                 list_country.append(event["country"])
@@ -170,6 +172,7 @@ async def process_category(**kwargs):
         list_category = [category for event, categories in list_event_category for category in categories]
 
         list_category = transform(list_category, transform_categories)
+        save_csv(list_category, "category.csv")
         for category in list_category:
             producer.send("category_topic", json.dumps(category).encode("utf-8"))
         
@@ -190,6 +193,7 @@ async def process_session(**kwargs):
         list_session = [session for task in list_session for session in task]
         
         list_session = transform(list_session, transform_sessions)
+        save_csv(list_session, "session.csv")
         for session in list_session:
             producer.send("session_topic", json.dumps(session).encode("utf-8"))
             
@@ -230,6 +234,7 @@ async def process_classification(**kwargs):
         list_constructor = []
         list_country = []
         list_classification = transform(list_classification, transform_classification)        
+        save_csv(list_classification, "classification.csv")
         for obj in list_classification:
             # Assuming obj is a dictionary
             if obj.get("rider") is not None:
@@ -256,6 +261,7 @@ def process_rider(**kwargs):
     list_rider = kwargs["ti"].xcom_pull(key="list_rider", task_ids="get_classification_task")
     
     list_rider = transform(list_rider, transform_riders)
+    save_csv(list_rider, "rider.csv")
 
     for rider in list_rider:
         producer.send("rider_topic", json.dumps(rider).encode("utf-8"))
@@ -265,6 +271,7 @@ def process_team(**kwargs):
     list_team = kwargs["ti"].xcom_pull(key="list_team", task_ids="get_classification_task")
     
     list_team = transform(list_team, transform_teams)
+    save_csv(list_team, "team.csv")
 
     for team in list_team:
         producer.send("team_topic", json.dumps(team).encode("utf-8"))
@@ -274,6 +281,7 @@ def process_constructor(**kwargs):
     list_constructor = kwargs["ti"].xcom_pull(key="list_constructor", task_ids="get_classification_task")
     
     list_constructor = transform(list_constructor, transform_constructors)
+    save_csv(list_constructor, "constructor.csv")
 
     for constructor in list_constructor:
         producer.send("constructor_topic", json.dumps(constructor).encode("utf-8"))
@@ -285,6 +293,7 @@ def process_country(**kwargs):
     list_country.extend(list_temp)
 
     list_country = transform(list_country, transform_countries)
+    save_csv(list_country, "country.csv")
 
     for country in list_country:
         producer.send("country_topic", json.dumps(country).encode("utf-8"))
@@ -294,6 +303,7 @@ def process_circuit(**kwargs):
     list_circuit = kwargs["ti"].xcom_pull(key="list_circuit", task_ids="get_event_task")
     
     list_circuit = transform(list_circuit, transform_circuits)
+    save_csv(list_circuit, "circuit.csv")
     
     for circuit in list_circuit:
         producer.send("circuit_topic", json.dumps(circuit).encode("utf-8"))
