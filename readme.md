@@ -104,6 +104,54 @@ Please refer to the specific scripts and instructions provided with the project 
 
 ![Dashboard](reports/Dashboard.png)
 
+## How to Run the MotoGP Data Engineering Project
+
+Follow these steps to run the MotoGP Data Engineering Project on your local machine:
+
+### Prerequisites
+
+Before you begin, make sure you have the following software and tools installed:
+
+- [Docker](https://www.docker.com/)
+- [Docker Compose](https://docs.docker.com/compose/)
+
+### Clone the Repository
+
+```bash
+git clone https://github.com/duonggiakhanhb/Motogp-Data-Engineering-Project.git
+cd motogp-data-engineering-project
+```
+### Start the Docker Containers
+
+```bash
+# add permission for script
+chmod +x scripts/entrypoint.sh
+# start docker containers
+docker-compose up -d
+```
+
+### Run the Apache Airflow DAG
+
+```bash
+# run DAG
+docker exec motogp-data-engineer-project-scheduler-1 airflow dags trigger motogp_etl
+```
+
+### Submit job to Spark Cluster
+
+```bash
+# add permission for script
+chmod +x scripts/spark_submit.sh
+# submit job to spark cluster
+./scripts/spark_submit.sh
+```
+
+### Access the Web UI
+- Apache Airflow: http://localhost:8181
+- Confluent Control Center: http://localhost:9021
+- Apache Spark master: http://localhost:9090
+- Apache Spark job history: http://localhost:4040
+
 ## Contributing
 
 Contributions to this project are welcome. If you have suggestions, enhancements, or bug fixes, feel free to submit a pull request. Your contributions can help improve the project and make it more valuable for the MotoGP community.
