@@ -18,7 +18,7 @@ default_args = {
 }
 
 dag = DAG(
-    "get_data_motogp",
+    "motogp_etl",
     default_args=default_args,
     schedule_interval="0 0 * * *", # run every day at midnight
     catchup=False
